@@ -4,3 +4,100 @@ author: "Charlotte Fowler"
 date: "11/8/2019"
 output: html_document
 ---
+
+
+# Problem 1 
+```{r}
+#loading packages
+library(tidyverse)
+```
+
+
+
+```{r}
+#reading in data
+set.seed(10)
+
+iris_with_missing = iris %>% 
+  map_df(~replace(.x, sample(1:150, 20), NA)) %>%
+  mutate(Species = as.character(Species))
+```
+
+
+
+```{r}
+#writing function to fill in missing values
+missing_values_fix = function(x){
+  if (is.numeric(x)) {
+    ifelse(is.na(x), mean(x, na.rm = TRUE), x)
+  } else if (is.character(x)) {
+    ifelse(is.na(x), "virginica", x)
+  }
+  
+
+}
+
+#performing function on iris data
+output = map(iris_with_missing, missing_values_fix)
+
+
+#creating new data
+iris_data = tibble(
+  sepal_length = output[[1]], 
+  sepal_width = output[[2]],
+  petal_length = output[[3]],
+  petal_width = output[[4]],
+  species = output[[5]]
+)
+```
+
+
+# Problem 2 
+
+Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:
+
+Start with a dataframe containing all file names; the list.files function will help
+Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
+Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
+Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups
+
+
+```{r message = FALSE}
+#reading in and tidying the data
+file_names = list.files("data")
+
+combined_df = map_dfr(.x = file_names, ~ read_csv(str_c("data/",.x)))
+
+combined_df = combined_df %>% 
+  mutate(
+    id = file_names
+  ) %>% 
+  separate(id, into = c("group", "id"), sep = "_") %>% 
+  mutate(id = str_remove(id, ".csv")) %>% 
+  pivot_longer(week_1:week_8, names_to = "week", values_to = "value") %>% 
+  mutate(week = str_remove(week, "week_"))
+```
+Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups
+
+```{r}
+combined_df %>% 
+  mutate(unique_id = paste(id, group, sep = "_")) %>% 
+  ggplot(aes(y = value, x = week, group = unique_id, color = group)) +
+  geom_line() + 
+  viridis::scale_color_viridis(
+    discrete = TRUE, 
+    name = "",
+    breaks=c("con", "exp"),
+    labels=c("Control", "Experiment")
+    ) + 
+  theme_bw() + 
+  labs(title = "Weekly Obsevations by Participant", y = "Observation", x = "Week") + 
+  theme(legend.position = "bottom") 
+```
+
+It appears that the control group tended to have lower values than the experiment group, especially as time progressed. 
+
+
+
+
+# Problem 3 
