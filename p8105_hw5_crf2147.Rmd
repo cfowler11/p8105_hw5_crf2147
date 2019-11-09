@@ -54,12 +54,7 @@ iris_data = tibble(
 
 # Problem 2 
 
-Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:
 
-Start with a dataframe containing all file names; the list.files function will help
-Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
-Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
-Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups
 
 
 ```{r message = FALSE}
@@ -77,7 +72,7 @@ combined_df = combined_df %>%
   pivot_longer(week_1:week_8, names_to = "week", values_to = "value") %>% 
   mutate(week = str_remove(week, "week_"))
 ```
-Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups
+
 
 ```{r}
 #making spaghetti plot
@@ -103,17 +98,6 @@ It appears that the control group tended to have lower values than the experimen
 
 # Problem 3 
 
-When designing an experiment or analysis, a common question is whether it is likely that a true effect will be detected – put differently, whether a false null hypothesis will be rejected. The probability that a false null hypothesis is rejected is referred to as power, and it depends on several factors, including: the sample size; the effect size; and the error variance. In this problem, you will conduct a simulation to explore power in a simple linear regression.
-
-First set the following design elements:
-
-Fix n=30
-Fix xi1 as draws from a standard Normal distribution
-Fix β0=2
-Fix σ2=50
-Set β1=0. Generate 10000 datasets from the model
-yi=β0+β1xi1+ϵi
-with ϵi∼N[0,σ2]. For each dataset, save β̂ 1 and the p-value arising from a test of H:β1=0 using α=0.05. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of lm.
 
 ```{r}
 #writing function to run regression 
@@ -144,7 +128,6 @@ for (i in 1:10000) {
 results_b1_0 = bind_rows(output)
 ```
 
-Repeat the above for β1={1,2,3,4,5,6}
 
 
 ```{r}
@@ -170,37 +153,39 @@ sim_results %>%
   geom_line() +
   geom_point() + 
   labs(title = "Proportion of null rejections by true Beta 1 value", y = "Proportion") + 
-  theme_bw() +
+  theme_classic() +
   scale_x_continuous(name="Beta 1", breaks=0:6) 
 ```
 
-As effect size ($\beta_1$) increases, the probability we reject the null, and therefore the power increases significantly. By the time $\beta_1 = 6$ given the experiment conditions, we are almost certain to reject the null. 
+As effect size ($\beta_1$) increases, the probability we reject the null approaches 1, and therefore the power increases significantly. By the time $\beta_1 = 6$ given the experiment conditions, we are almost certain to reject the null. 
 
 
 
 ```{r}
+#calculating avg beta hat
 all_beta_avgs = sim_results %>% 
   group_by(beta1) %>% 
   summarise(all_beta1 = mean(beta1_hat))  
 
+#calculating avg sig beta hat
 sig_beta_avgs = sim_results %>% 
   filter(beta1_hat_pvalue<0.05) %>% 
   group_by(beta1) %>% 
   summarise(sig_beta1 = mean(beta1_hat))  
   
-
+#creating graph of average betas
 left_join(all_beta_avgs, sig_beta_avgs, by = "beta1") %>% 
   pivot_longer(cols = c(all_beta1, sig_beta1), names_to = "type", values_to = "avg") %>% 
   ggplot(aes(x = beta1, y = avg, color = type)) + 
   geom_line() +
   geom_point() + 
-  labs(title = "Average approximate beta by true beta value") + 
+  labs(title = "Average Approximate Beta by True Beta") + 
   viridis::scale_color_viridis(
     discrete = TRUE, 
     name = "",
     breaks=c("all_beta1", "sig_beta1"),
     labels=c("all beta", "significant only beta")) + 
-  theme_bw() +
+  theme_classic() +
   scale_x_continuous(name="true beta 1", breaks=0:6) + 
   scale_y_continuous(name="average beta 1 hat", breaks=0:6) + 
   theme(legend.position = "bottom") 
@@ -208,3 +193,4 @@ left_join(all_beta_avgs, sig_beta_avgs, by = "beta1") %>%
 
 ```
 
+The average $\hat{\beta_1}$ tends to be larger among $\hat{\beta_1}$ which rejected the mean. This is especially true among $\beta_1 = 1,2,3$. For these $\beta_1$'s, the null will only be rejected if $\hat{\beta_1}$ is much larger than 0, and therefore larger than $\beta_1$. For larger values of $\beta_1$ the null is almost always rejected, as this criteria will already be fufilled. Therefore, as $\beta_1$ increases, the average of all $\hat{\beta_1}$s approaches that of the $\hat{\beta_1}$ which rejected the mean. At $\beta_1 = 0$, we are equally likely to reject because of very large or very small values, and this results in the two averages being essentially equal. 
